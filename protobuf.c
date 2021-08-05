@@ -36,9 +36,11 @@
 // when opcache is enabled initial array could be stored in
 // shared memory as an immutable one, in this case it should be separated
 #define ARRAY_ADD_NEXT_INDEX(array, zval_p) \
-	if (Z_IMMUTABLE_P(array) || Z_REFCOUNTED_P(array)) SEPARATE_ARRAY(array); \
-	add_next_index_zval((array), (zval_p))
-
+	if (Z_IMMUTABLE_P(array) || Z_REFCOUNTED_P(array)) { \
+                SEPARATE_ARRAY(array); \
+        } \
+        add_next_index_zval((array), (zval_p));
+        
 #define IS_32_BIT (sizeof(zend_long) < sizeof(int64_t))
 
 #define ZVAL_INT64(zval, value) \
@@ -105,14 +107,17 @@ PHP_METHOD(ProtobufMessage, append)
 		RETURN_THIS();
 	}
 
-	if (Z_TYPE_P(value) == IS_NULL)
+	if (Z_TYPE_P(value) == IS_NULL) {
 		RETURN_THIS();
-
-	if ((values = pb_get_values(getThis())) == NULL)
+        }
+        
+	if ((values = pb_get_values(getThis())) == NULL) {
 		RETURN_THIS();
-
-	if ((array = pb_get_value(getThis(), values, (zend_ulong)field_number)) == NULL)
+        }
+        
+	if ((array = pb_get_value(getThis(), values, (zend_ulong)field_number)) == NULL) {
 		RETURN_THIS();
+        }
 
 	if (pb_assign_value(getThis(), &val, value, (zend_ulong)field_number) != 0) {
 		RETURN_THIS();
@@ -131,12 +136,14 @@ PHP_METHOD(ProtobufMessage, clear)
 		return;
 	}
 
-	if ((values = pb_get_values(getThis())) == NULL)
+	if ((values = pb_get_values(getThis())) == NULL) {
 		RETURN_THIS();
-
-	if ((array = pb_get_value(getThis(), values, (zend_ulong)field_number)) == NULL)
+        }
+        
+	if ((array = pb_get_value(getThis(), values, (zend_ulong)field_number)) == NULL) {
 		RETURN_THIS();
-
+        }
+        
 	if (Z_TYPE_P(array) != IS_ARRAY) {
 		PB_COMPILE_ERROR("'%s' field internal type should be an array", pb_get_field_name(getThis(), (zend_ulong)field_number));
 
@@ -164,43 +171,51 @@ PHP_METHOD(ProtobufMessage, printDebugString)
 	indent = ((int)level) * 2;
 	indent_char = indent ? ' ': '\0';
 
-	if ((values = pb_get_values(getThis())) == NULL)
+	if ((values = pb_get_values(getThis())) == NULL) {
 		return;
-
-	if (pb_get_field_descriptors(getThis(), &field_descriptors))
+	}
+        
+	if (pb_get_field_descriptors(getThis(), &field_descriptors)) {
 		return;
-
+        }
+        
 	int is_loop_finished = 0;
 	PB_FOREACH(&i, Z_ARRVAL_P(values)) {
-		if (is_loop_finished)
+		if (is_loop_finished) {
 			break;
-
+                }
+                
 		zend_hash_get_current_key_ex(Z_ARRVAL_P(values), NULL, &field_number, &i);
 		value = zend_hash_get_current_data_ex(Z_ARRVAL_P(values), &i);
 
-		if ((field_descriptor = pb_get_field_descriptor(getThis(), &field_descriptors, field_number)) == NULL)
+		if ((field_descriptor = pb_get_field_descriptor(getThis(), &field_descriptors, field_number)) == NULL) {
 			break;
+                }
 
-		if ((field_name = pb_get_field_name(getThis(), field_number)) == NULL)
+		if ((field_name = pb_get_field_name(getThis(), field_number)) == NULL) {
 			break;
+                }
 
 		if (Z_TYPE_P(value) == IS_ARRAY) {
-			if (zend_hash_num_elements(Z_ARRVAL_P(value)) == 0)
+			if (zend_hash_num_elements(Z_ARRVAL_P(value)) == 0) {
 				continue;
-
+                        }
+                        
 			zval *field_type;
-			if ((field_type = pb_get_field_type(getThis(), field_descriptor, field_number)) == NULL)
+			if ((field_type = pb_get_field_type(getThis(), field_descriptor, field_number)) == NULL) {
 				break;
-
+                        }
+                        
 			int wire = pb_get_wire_type(Z_LVAL_P(field_type));
 
 			PB_FOREACH(&j, Z_ARRVAL_P(value)) {
 				zend_hash_get_current_key_ex(Z_ARRVAL_P(value), NULL, &index, &j);
 				val = zend_hash_get_current_data_ex(Z_ARRVAL_P(value), &j);
 
-				if (Z_TYPE_P(value) == IS_NULL) // make sure it's not Z_TYPE_P(val)
+				if (Z_TYPE_P(value) == IS_NULL) { // make sure it's not Z_TYPE_P(val)
 					continue;
-
+                                }
+                        
 				if ((wire == WIRE_TYPE_LENGTH_DELIMITED && Z_TYPE_P(val) != IS_STRING) || wire == -1) {
 					php_printf("%*c%s {", indent, indent_char, field_name);
 					if (pb_print_debug_field_value(val, level + 1) != 0) {
@@ -218,13 +233,15 @@ PHP_METHOD(ProtobufMessage, printDebugString)
 			}
 		} else if (Z_TYPE_P(value) == IS_OBJECT) {
 			php_printf("%*c%s {", indent, indent_char, field_name);
-			if (pb_print_debug_field_value(value, level + 1) != 0)
+			if (pb_print_debug_field_value(value, level + 1) != 0) {
 				break;
+                        }
 			php_printf("%*c}\n", indent, indent_char);
 		} else if (Z_TYPE_P(value) != IS_NULL) {
 			php_printf("%*c%s:", indent, indent_char, field_name);
-			if (pb_print_debug_field_value(value, level + 1) != 0)
+			if (pb_print_debug_field_value(value, level + 1) != 0) {
 				break;
+                        }
 		}
 	}
 
@@ -244,26 +261,32 @@ PHP_METHOD(ProtobufMessage, dump)
 		return;
 	}
 
-	if (pb_get_field_descriptors(getThis(), &field_descriptors))
+	if (pb_get_field_descriptors(getThis(), &field_descriptors)) {
 		return;
-
-	if ((values = pb_get_values(getThis())) == NULL)
+	}
+        
+	if ((values = pb_get_values(getThis())) == NULL) {
 		goto fail0;
-
-	if (level > 0)
+	}
+        
+	if (level > 0) {
 		php_printf("%*c%s {\n", 2 * (int) level, ' ', ZSTR_VAL(Z_OBJCE_P(getThis())->name));
-	else
+        } else {
 		php_printf("%s {\n", ZSTR_VAL(Z_OBJCE_P(getThis())->name));
-
+        }
+        
 	PB_FOREACH(&i, Z_ARRVAL_P(values)) {
 		zend_hash_get_current_key_ex(Z_ARRVAL_P(values), NULL, &field_number, &i);
 		value = zend_hash_get_current_data_ex(Z_ARRVAL_P(values), &i);
-		if ((field_descriptor = pb_get_field_descriptor(getThis(), &field_descriptors, field_number)) == NULL)
+                
+		if ((field_descriptor = pb_get_field_descriptor(getThis(), &field_descriptors, field_number)) == NULL) {
 			goto fail0;
-
-		if ((field_name = pb_get_field_name(getThis(), field_number)) == NULL)
+                }
+		
+                if ((field_name = pb_get_field_name(getThis(), field_number)) == NULL) {
 			goto fail0;
-
+                }
+                
 		if (Z_TYPE_P(value) == IS_ARRAY) {
 			if (zend_hash_num_elements(Z_ARRVAL_P(value)) > 0 || !only_set) {
 				php_printf("%*c%lu: %s(%u) => \n", ((int) level + 1) * 2, ' ', (uint64_t)field_number, field_name, zend_hash_num_elements(Z_ARRVAL_P(value)));
@@ -275,25 +298,29 @@ PHP_METHOD(ProtobufMessage, dump)
 
 						php_printf("%*c[%lu] =>", ((int) level + 2) * 2, ' ', (uint64_t)index);
 
-						if (pb_dump_field_value(val, level + 3, only_set) != 0)
+						if (pb_dump_field_value(val, level + 3, only_set) != 0) {
 							goto fail0;
+                                                }
 					}
-				} else
+				} else {
 					php_printf("%*cempty\n", ((int) level + 2) * 2, ' ');
+                                }
 			}
 		} else if (Z_TYPE_P(value) != IS_NULL || !only_set) {
 			php_printf("%*c%lu: %s =>", 2 * ((int) level + 1), ' ', (uint64_t)field_number, field_name);
 
-			if (pb_dump_field_value(value, level + 1, only_set) != 0)
+			if (pb_dump_field_value(value, level + 1, only_set) != 0) {
 				goto fail0;
+                        }
 		}
 	}
 
-	if (level > 0)
+	if (level > 0) {
 		php_printf("%*c}\n", 2 * (int) level, ' ');
-	else
+        } else {
 		php_printf("}\n");
-
+        }
+        
 fail0:
 	zval_ptr_dtor(&field_descriptors);
 }
@@ -307,12 +334,14 @@ PHP_METHOD(ProtobufMessage, count)
 		return;
 	}
 
-	if ((values = pb_get_values(getThis())) == NULL)
+	if ((values = pb_get_values(getThis())) == NULL) {
 		return;
-
-	if ((value = pb_get_value(getThis(), values, (zend_ulong)field_number)) == NULL)
+        }
+        
+	if ((value = pb_get_value(getThis(), values, (zend_ulong)field_number)) == NULL) {
 		return;
-
+        }
+        
 	if (Z_TYPE_P(value) == IS_ARRAY) {
 		RETURN_LONG(zend_hash_num_elements(Z_ARRVAL_P(value)));
 	} else {
@@ -330,12 +359,14 @@ PHP_METHOD(ProtobufMessage, get)
 		return;
 	}
 
-	if ((values = pb_get_values(getThis())) == NULL)
+	if ((values = pb_get_values(getThis())) == NULL) {
 		return;
-
-	if ((value = pb_get_value(getThis(), values, (zend_ulong)field_number)) == NULL)
+        }
+        
+	if ((value = pb_get_value(getThis(), values, (zend_ulong)field_number)) == NULL) {
 		return;
-
+        }
+        
 	if (index != -1) {
 		if (Z_TYPE_P(value) != IS_ARRAY) {
 			PB_COMPILE_ERROR("'%s' field internal type should be an array", pb_get_field_name(getThis(), (zend_ulong)field_number));
@@ -343,9 +374,10 @@ PHP_METHOD(ProtobufMessage, get)
 		}
 
 		val = zend_hash_index_find(Z_ARRVAL_P(value), index);
-		if (val == NULL)
+		if (val == NULL) {
 			return;
-
+                }
+                
 		value = val;
 	}
 
@@ -367,9 +399,10 @@ PHP_METHOD(ProtobufMessage, parseFromString)
 	zval arg, *args, *field_descriptor, *field_type, field_descriptors, name, *old_value, value, *values, zret;
 	int bool_value;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "s", &pack, &pack_size) == FAILURE)
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "s", &pack, &pack_size) == FAILURE) {
 		return;
-
+        }
+        
 	ZVAL_STRINGL(&name, PB_RESET_METHOD, sizeof(PB_RESET_METHOD) - 1);
 
 	if (call_user_function(NULL, getThis(), &name, &zret, 0, NULL) == FAILURE) {
@@ -380,15 +413,18 @@ PHP_METHOD(ProtobufMessage, parseFromString)
 	zval_ptr_dtor(&name);
 	zval_ptr_dtor(&zret);
 
-	if (pb_get_field_descriptors(getThis(), &field_descriptors))
+	if (pb_get_field_descriptors(getThis(), &field_descriptors)) {
 		return;
+        }
+        
 	values = pb_get_values(getThis());
 
 	reader_init(&reader, pack, pack_size);
 
 	while (reader_has_more(&reader)) {
-		if (reader_read_tag(&reader, &next_field_number, &wire_type) != 0)
+		if (reader_read_tag(&reader, &next_field_number, &wire_type) != 0) {
 			break;
+                }
 		field_number = (zend_ulong)next_field_number;
 
 		if ((field_descriptor = zend_hash_index_find(Z_ARRVAL(field_descriptors), field_number)) == NULL) {
@@ -423,12 +459,12 @@ PHP_METHOD(ProtobufMessage, parseFromString)
 			continue;
 		}
 
-		if ((field_type = pb_get_field_type(getThis(), field_descriptor, field_number)) == NULL)
+		if ((field_type = pb_get_field_type(getThis(), field_descriptor, field_number)) == NULL) {
 			goto fail0;
-
-		if ((old_value = pb_get_value(getThis(), values, field_number)) == NULL)
+                }
+		if ((old_value = pb_get_value(getThis(), values, field_number)) == NULL) {
 			goto fail0;
-
+                }
 		ZVAL_NULL(&value);
 		field_repeated = (Z_TYPE_P(old_value) == IS_ARRAY);
 
@@ -488,8 +524,9 @@ PHP_METHOD(ProtobufMessage, parseFromString)
 						return;
 					}
 
-					if (Z_REFCOUNTED(value))
+					if (Z_REFCOUNTED(value)) {
 						Z_ADDREF(value);
+                                        }
 					ARRAY_ADD_NEXT_INDEX(old_value, &value);
 					zval_ptr_dtor(&value);
 				}
@@ -512,8 +549,9 @@ PHP_METHOD(ProtobufMessage, parseFromString)
 		}
 
 		if (field_repeated) {
-			if (Z_REFCOUNTED(value))
+			if (Z_REFCOUNTED(value)) {
 				Z_ADDREF(value);
+                        }
 			ARRAY_ADD_NEXT_INDEX(old_value, &value);
 		} else {
 			zval_ptr_dtor(old_value);
@@ -540,12 +578,14 @@ PHP_METHOD(ProtobufMessage, serializeToString)
 	HashPosition i, j;
 	zval *array, *field_descriptor, field_descriptors, *required, *type, *value, *values;
 
-	if ((values = pb_get_values(getThis())) == NULL)
+	if ((values = pb_get_values(getThis())) == NULL) {
 		return;
-
-	if (pb_get_field_descriptors(getThis(), &field_descriptors))
+        }
+        
+	if (pb_get_field_descriptors(getThis(), &field_descriptors)) {
 		return;
-
+        }
+        
 	writer_init(&writer);
 
 	PB_FOREACH(&i, Z_ARRVAL(field_descriptors)) {
@@ -561,9 +601,10 @@ PHP_METHOD(ProtobufMessage, serializeToString)
 			goto fail;
 		}
 
-		if ((type = pb_get_field_type(getThis(), field_descriptor, field_number)) == NULL)
+		if ((type = pb_get_field_type(getThis(), field_descriptor, field_number)) == NULL) {
 			goto fail;
-
+                }
+                
 		if (Z_TYPE_P(value) == IS_NULL) {
 			if ((required = zend_hash_str_find(Z_ARRVAL_P(field_descriptor), PB_FIELD_REQUIRED, sizeof(PB_FIELD_REQUIRED) - 1)) == NULL) {
 				zend_throw_exception_ex(NULL, 0, "%s: '%s' field is required and must be set", ZSTR_VAL(Z_OBJCE_P(getThis())->name), pb_get_field_name(getThis(), field_number));
@@ -580,17 +621,20 @@ PHP_METHOD(ProtobufMessage, serializeToString)
 		if (Z_TYPE_P(value) == IS_ARRAY) {
 			array = value;
 			if (pb_is_field_packed(field_descriptor)) {
-				if (pb_serialize_packed_field(getThis(), &writer, field_number, Z_LVAL_P(type), array) != 0)
+				if (pb_serialize_packed_field(getThis(), &writer, field_number, Z_LVAL_P(type), array) != 0) {
 					goto fail;
+                                }
 			} else {
 				PB_FOREACH(&j, Z_ARRVAL_P(array)) {
 					value = zend_hash_get_current_data_ex(Z_ARRVAL_P(array), &j);
-					if (pb_serialize_field_value(getThis(), &writer, field_number, type, value) != 0)
-					goto fail;
+					if (pb_serialize_field_value(getThis(), &writer, field_number, type, value) != 0) {
+                                                goto fail;
+                                        }
 				}
 			}
-		} else if (pb_serialize_field_value(getThis(), &writer, field_number, type, value) != 0)
+		} else if (pb_serialize_field_value(getThis(), &writer, field_number, type, value) != 0) {
 			goto fail;
+                }
 	}
 
 	pack = writer_get_pack(&writer, &pack_size);
@@ -617,12 +661,14 @@ PHP_METHOD(ProtobufMessage, set)
 		RETURN_THIS();
 	}
 
-	if ((values = pb_get_values(getThis())) == NULL)
+	if ((values = pb_get_values(getThis())) == NULL) {
 		RETURN_THIS();
+        }
 
-	if ((old_value = pb_get_value(getThis(), values, (zend_ulong)field_number)) == NULL)
+	if ((old_value = pb_get_value(getThis(), values, (zend_ulong)field_number)) == NULL) {
 		RETURN_THIS();
-
+        }
+        
 	if (Z_TYPE_P(value) == IS_NULL) {
 		if (Z_TYPE_P(old_value) != IS_NULL) {
 			zval_ptr_dtor(old_value);
@@ -735,14 +781,17 @@ static int pb_assign_value(zval *this, zval *dst, zval *src, zend_ulong field_nu
 {
 	zval *field_descriptor, field_descriptors, tmp, *type;
 
-	if (pb_get_field_descriptors(this, &field_descriptors))
+	if (pb_get_field_descriptors(this, &field_descriptors)) {
 		goto fail0;
+        }
 
-	if ((field_descriptor = pb_get_field_descriptor(this, &field_descriptors, field_number)) == NULL)
+	if ((field_descriptor = pb_get_field_descriptor(this, &field_descriptors, field_number)) == NULL) {
 		goto fail1;
+        }
 
-	if ((type = pb_get_field_type(this, field_descriptor, field_number)) == NULL)
+	if ((type = pb_get_field_type(this, field_descriptor, field_number)) == NULL) {
 		goto fail1;
+        }
 
 	ZVAL_DUP(&tmp, src);
 
@@ -751,13 +800,15 @@ static int pb_assign_value(zval *this, zval *dst, zval *src, zend_ulong field_nu
 		{
 			case PB_TYPE_DOUBLE:
 			case PB_TYPE_FLOAT:
-				if (Z_TYPE(tmp) != IS_DOUBLE)
+				if (Z_TYPE(tmp) != IS_DOUBLE) {
 					convert_to_explicit_type(&tmp, IS_DOUBLE);
+                                }
 				break;
 
 			case PB_TYPE_FIXED32:
-				if (Z_TYPE(tmp) != IS_LONG)
+				if (Z_TYPE(tmp) != IS_LONG) {
 					convert_to_explicit_type(&tmp, IS_LONG);
+                                }
 				break;
 
 			case PB_TYPE_BOOL:
@@ -780,9 +831,9 @@ static int pb_assign_value(zval *this, zval *dst, zval *src, zend_ulong field_nu
 				break;
 
 			case PB_TYPE_STRING:
-				if (Z_TYPE(tmp) != IS_STRING)
+				if (Z_TYPE(tmp) != IS_STRING) {
 					convert_to_explicit_type(&tmp, IS_STRING);
-
+                                }
 				break;
 
 			default:
@@ -813,12 +864,15 @@ static int pb_print_field_value(zval *value, zend_long level, zend_bool only_set
 	int used_tmp=0;
 	zval tmp;
 
-	if (Z_TYPE_P(value) == IS_NULL)
+	if (Z_TYPE_P(value) == IS_NULL) {
 		string_value = "null";
-	else if (Z_TYPE_P(value) == IS_TRUE)
+        }
+	else if (Z_TYPE_P(value) == IS_TRUE) {
 		string_value = "true";
-	else if (Z_TYPE_P(value) == IS_FALSE)
+        }
+	else if (Z_TYPE_P(value) == IS_FALSE) {
 		string_value = "false";
+        }
 	else {
 		ZVAL_DUP(&tmp, value);
 		convert_to_string(&tmp);
@@ -826,14 +880,16 @@ static int pb_print_field_value(zval *value, zend_long level, zend_bool only_set
 		used_tmp=1;
 	}
 
-	if (Z_TYPE_P(value) == IS_STRING)
+	if (Z_TYPE_P(value) == IS_STRING) {
 		php_printf(" \"%s\"\n", string_value);
-	else
+        } else {
 		php_printf(" %s\n", string_value);
-
-	if(used_tmp)
+        }
+        
+	if(used_tmp) {
 		zval_dtor(&tmp);
-
+        }
+        
 	return 0;
 }
 
@@ -855,10 +911,11 @@ static int pb_print_debug_field_value(zval *value, zend_long level)
 		dump_result = call_user_function(NULL, value, &tmp, &ret, 1, args);
 		zval_ptr_dtor(&tmp);
 
-		if (dump_result == FAILURE)
+		if (dump_result == FAILURE) {
 			return -1;
-		else
+		} else {
 			return 0;
+                }
 
 		zval_ptr_dtor(&ret);
 	}
@@ -872,7 +929,7 @@ static int pb_dump_field_value(zval *value, zend_long level, zend_bool only_set)
 	zval tmp, ret, arg0, arg1, args[2];
 	int dump_result;
 
-    ZVAL_UNDEF(&ret); // call_user_function will segfault without this init
+        ZVAL_UNDEF(&ret); // call_user_function will segfault without this init
 
 	if (Z_TYPE_P(value) == IS_OBJECT) {
 		php_printf("\n");
@@ -887,10 +944,11 @@ static int pb_dump_field_value(zval *value, zend_long level, zend_bool only_set)
 
 		dump_result = call_user_function(NULL, value, &tmp, &ret, 2, args);
 		zval_ptr_dtor(&tmp);
-		if (dump_result == FAILURE)
+		if (dump_result == FAILURE) {
 			return -1;
-		else
+		} else {
 			return 0;
+                }
 	}
 
 	return pb_print_field_value(value, level, only_set);
@@ -900,10 +958,11 @@ static zval *pb_get_field_descriptor(zval *this, zval *field_descriptors, zend_u
 {
 	zval *field_descriptor = NULL;
 
-    field_descriptor = zend_hash_index_find(Z_ARRVAL_P(field_descriptors), field_number);
-    if (field_descriptor == NULL)
+        field_descriptor = zend_hash_index_find(Z_ARRVAL_P(field_descriptors), field_number);
+        if (field_descriptor == NULL) {
 		PB_COMPILE_ERROR_EX(this, "missing %lu field descriptor", (uint64_t)field_number);
-
+        }
+        
 	return field_descriptor;
 }
 
@@ -911,10 +970,11 @@ static zval *pb_get_field_type(zval *this, zval *field_descriptor, zend_ulong fi
 {
 	zval *field_type;
 
-    field_type = zend_hash_str_find(Z_ARRVAL_P(field_descriptor), PB_FIELD_TYPE, sizeof(PB_FIELD_TYPE) - 1);
-    if (field_type == NULL)
+        field_type = zend_hash_str_find(Z_ARRVAL_P(field_descriptor), PB_FIELD_TYPE, sizeof(PB_FIELD_TYPE) - 1);
+        if (field_type == NULL) {
 		PB_COMPILE_ERROR_EX(this, "missing '%s' field type property in field descriptor", pb_get_field_name(this, field_number));
-
+        }
+        
 	return field_type;
 }
 
@@ -937,11 +997,13 @@ static const char *pb_get_field_name(zval *this, zend_ulong field_number)
 {
 	zval *field_descriptor, field_descriptors, *field_name;
 
-	if (pb_get_field_descriptors(this, &field_descriptors))
+	if (pb_get_field_descriptors(this, &field_descriptors)) {
 		return NULL;
+        }
 
-	if ((field_descriptor = pb_get_field_descriptor(this, &field_descriptors, field_number)) == NULL)
+	if ((field_descriptor = pb_get_field_descriptor(this, &field_descriptors, field_number)) == NULL) {
 		goto fail0;
+        }
 
 	field_name = zend_hash_str_find(Z_ARRVAL_P(field_descriptor), PB_FIELD_NAME, sizeof(PB_FIELD_NAME) - 1);
 	if (field_name == NULL) {
@@ -1025,11 +1087,12 @@ static zval *pb_get_value(zval *this, zval *values, zend_ulong field_number)
 {
 	zval *value = NULL;
 
-    value = zend_hash_index_find(Z_ARRVAL_P(values), field_number);
-    if (value == NULL)
-		PB_COMPILE_ERROR_EX(this, "missing %lu field value", (uint64_t)field_number);
-
-    return value;
+        value = zend_hash_index_find(Z_ARRVAL_P(values), field_number);
+        if (value == NULL) {
+                PB_COMPILE_ERROR_EX(this, "missing %lu field value", (uint64_t)field_number);
+        }
+                
+        return value;
 }
 
 static zval *pb_get_values(zval *this)
@@ -1086,8 +1149,9 @@ static int pb_parse_field_value(zval *this, reader_t *reader, zend_ulong field_n
 			break;
 
 		case PB_TYPE_STRING:
-			if ((ret = reader_read_string(reader, &str, &str_size)) == 0)
+			if ((ret = reader_read_string(reader, &str, &str_size)) == 0) {
 				ZVAL_STRINGL(value, str, str_size);
+                        }
 			break;
 
 		default:

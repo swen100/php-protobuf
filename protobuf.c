@@ -801,13 +801,13 @@ static int pb_assign_value(zval *this, zval *dst, zval *src, zend_ulong field_nu
 			case PB_TYPE_DOUBLE:
 			case PB_TYPE_FLOAT:
 				if (Z_TYPE(tmp) != IS_DOUBLE) {
-					convert_to_explicit_type(&tmp, IS_DOUBLE);
+                                        convert_to_double(&tmp);
                                 }
 				break;
 
 			case PB_TYPE_FIXED32:
 				if (Z_TYPE(tmp) != IS_LONG) {
-					convert_to_explicit_type(&tmp, IS_LONG);
+                                        convert_to_long(&tmp);
                                 }
 				break;
 
@@ -827,12 +827,14 @@ static int pb_assign_value(zval *this, zval *dst, zval *src, zend_ulong field_nu
 					}
 				}
 
-				convert_to_explicit_type(&tmp, IS_LONG);
+				if (Z_TYPE(tmp) != IS_LONG) {
+                                        convert_to_long(&tmp);
+                                }
 				break;
 
 			case PB_TYPE_STRING:
 				if (Z_TYPE(tmp) != IS_STRING) {
-					convert_to_explicit_type(&tmp, IS_STRING);
+					convert_to_string(&tmp);
                                 }
 				break;
 
